@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 const jwt = require('jsonwebtoken')
 const app = express();
@@ -13,11 +13,50 @@ app.use(cors())
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.stdsb.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
-client.connect(err => {
-    const collection = client.db("test").collection("devices");
-    // perform actions on the collection object
-    client.close();
-});
+async function run() {
+    try {
+        await client.connect();
+        const toolsCollection = client.db("partsIndusto").collection("tools");
+        const ordersCollection = client.db("partsIndusto").collection("orders");
+
+        //load tools api
+        app.get('/tool', async (req, res) => {
+            const query = {}
+            const allTools = await toolsCollection.find(query).toArray()
+            res.send(allTools)
+        })
+
+        //load signle tool api
+        app.get('/tool/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) }
+            const singleTool = await toolsCollection.findOne(query)
+            res.send(singleTool)
+        })
+
+        //post order api
+        app.post('/order', async (req, res) => {
+            const query = req.body;
+            const order = await ordersCollection.insertOne(query)
+            res.send(order)
+        })
+
+        //get my orders api with email query
+        app.get('/myorder', async (req, res) => {
+            const userEmail = req.query.email;
+            const query = { email: userEmail }
+            const userOrders = await ordersCollection.find(query).toArray()
+            res.send(userOrders)
+        })
+
+
+    }
+    finally {
+
+    }
+
+}
+run().catch(console.dir)
 
 
 app.get('/', (req, res) => {
