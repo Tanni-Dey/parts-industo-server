@@ -19,6 +19,7 @@ async function run() {
         const toolsCollection = client.db("partsIndusto").collection("tools");
         const ordersCollection = client.db("partsIndusto").collection("orders");
         const reviewsCollection = client.db("partsIndusto").collection("reviews");
+        const usersCollection = client.db("partsIndusto").collection("users");
 
         //load tools api
         app.get('/tool', async (req, res) => {
@@ -32,6 +33,19 @@ async function run() {
             const query = {}
             const allReviews = await reviewsCollection.find(query).toArray()
             res.send(allReviews)
+        })
+
+        //update or insert all user api
+        app.put('/user/:email', async (req, res) => {
+            const userEmail = req.params.email;
+            const user = req.body;
+            const filter = { email: userEmail }
+            const options = { upsert: true };
+            const udateUser = {
+                $set: user
+            }
+            const result = await usersCollection.updateOne(filter, udateUser, options)
+            res.send(result)
         })
 
         //load signle tool api
