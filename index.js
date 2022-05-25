@@ -18,12 +18,20 @@ async function run() {
         await client.connect();
         const toolsCollection = client.db("partsIndusto").collection("tools");
         const ordersCollection = client.db("partsIndusto").collection("orders");
+        const reviewsCollection = client.db("partsIndusto").collection("reviews");
 
         //load tools api
         app.get('/tool', async (req, res) => {
             const query = {}
             const allTools = await toolsCollection.find(query).toArray()
             res.send(allTools)
+        })
+
+        //load all reviews api
+        app.get('/review', async (req, res) => {
+            const query = {}
+            const allReviews = await reviewsCollection.find(query).toArray()
+            res.send(allReviews)
         })
 
         //load signle tool api
@@ -39,6 +47,13 @@ async function run() {
             const query = req.body;
             const order = await ordersCollection.insertOne(query)
             res.send(order)
+        })
+
+        //post review api
+        app.post('/review', async (req, res) => {
+            const query = req.body;
+            const review = await reviewsCollection.insertOne(query)
+            res.send(review)
         })
 
         //get my orders api with email query
