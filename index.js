@@ -30,6 +30,9 @@ function verifyJwt(req, res, next) {
     })
 
 }
+
+
+
 async function run() {
     try {
         await client.connect();
@@ -38,11 +41,25 @@ async function run() {
         const reviewsCollection = client.db("partsIndusto").collection("reviews");
         const usersCollection = client.db("partsIndusto").collection("users");
 
+
+        const verifyAdmin = async (req, res, next) => {
+            const decodedEmail = req.decoded.email
+            const user = await usersCollection.findOne({ email: decodedEmail })
+            if (user.role === 'admin') {
+                next()
+            }
+            else {
+                return res.status(403).send({ message: 'Forbiden Access' })
+
+            }
+        }
+
+
         //load tools api
         app.get('/tool', async (req, res) => {
             const query = {}
             const allTools = await toolsCollection.find(query).toArray()
-            res.send(allTools)
+            res.send(allTools.reverse())
         })
 
         //load all reviews api
@@ -84,23 +101,46 @@ async function run() {
         })
 
         //make admin api
-        app.put('/user/admin/:email', verifyJwt, async (req, res) => {
+        app.put('/user/admin/:email', verifyJwt, verifyAdmin, async (req, res) => {
             const userEmail = req.params.email;
             // const user = req.body;
             const filter = { email: userEmail }
-            const decodedEmail = req.decoded.email
-            const user = await usersCollection.findOne({ email: decodedEmail })
-            if (user.role === 'admin') {
-                const udateUser = {
-                    $set: { role: 'admin' }
-                }
-                const result = await usersCollection.updateOne(filter, udateUser)
-                res.send(result)
+            // const decodedEmail = req.decoded.email
+            // const user = await usersCollection.findOne({ email: decodedEmail })
+            // if (user.role === 'admin') {
+            const udateUser = {
+                $set: { role: 'admin' }
             }
-            else {
-                return res.status(403).send({ message: 'Forbiden Access' })
+            const result = await usersCollection.updateOne(filter, udateUser)
+            res.send(result)
+            // }
+            // else {
+            //     return res.status(403).send({ message: 'Forbiden Access' })
 
+            // }
+        })
+
+
+        //get update data in profile api
+        app.get('/profile', verifyJwt, async (req, res) => {
+            const profileEmail = req.query.email;
+            const query = { email: profileEmail }
+            const profile = await usersCollection.findOne(query)
+            res.send(profile)
+        })
+
+
+        //update profile api
+        app.put('/profile', async (req, res) => {
+            const profileEmail = req.query.email;
+            const userProfile = req.body
+            const filter = { email: profileEmail }
+            // const options = { upsert: true };
+            const updateProfile = {
+                $set: userProfile
             }
+            const result = await usersCollection.updateOne(filter, updateProfile)
+            res.send(result)
         })
 
 
@@ -111,6 +151,16 @@ async function run() {
             const singleTool = await toolsCollection.findOne(query)
             res.send(singleTool)
         })
+
+
+
+        //add product post api
+        app.post('/addtool', verifyJwt, verifyAdmin, async (req, res) => {
+            const query = req.body;
+            const tool = await toolsCollection.insertOne(query)
+            res.send(tool)
+        })
+
 
         //post order api
         app.post('/order', async (req, res) => {
