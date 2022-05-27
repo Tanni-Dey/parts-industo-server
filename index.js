@@ -3,6 +3,8 @@ const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 const jwt = require('jsonwebtoken')
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -40,6 +42,7 @@ async function run() {
         const ordersCollection = client.db("partsIndusto").collection("orders");
         const reviewsCollection = client.db("partsIndusto").collection("reviews");
         const usersCollection = client.db("partsIndusto").collection("users");
+        const paymentsCollection = client.db("partsIndusto").collection("payments");
 
 
         const verifyAdmin = async (req, res, next) => {
@@ -53,6 +56,19 @@ async function run() {
 
             }
         }
+
+
+        //create payment method
+        app.post('/create-payment-intent', verifyJwt, async (req, res) => {
+            const { price } = req.body;
+            const amount = price * 100;
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: 'usd',
+                payment_method_types: ['card']
+            })
+            res.send({ clientSecret: paymentIntent.client_secret })
+        })
 
 
         //load tools api
@@ -198,6 +214,23 @@ async function run() {
             const query = { _id: ObjectId(id) }
             const singlePayment = await ordersCollection.findOne(query)
             res.send(singlePayment)
+        })
+
+
+        //single pay to paid update api
+        app.patch('/payment/:id', verifyJwt, async (req, res) => {
+            const id = req.params.id;
+            const payment = req.body;
+            const query = { _id: ObjectId(id) }
+            const updatePayment = {
+                $set: {
+                    paid: true,
+                    transId: payment.transactionid
+                }
+            }
+            const updateOrder = await ordersCollection.updateOne(query, updatePayment)
+            const paymentInsert = await paymentsCollection.insertOne(payment)
+            res.send(updatePayment)
         })
 
 
