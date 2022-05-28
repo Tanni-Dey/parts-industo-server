@@ -257,7 +257,7 @@ async function run() {
         })
 
 
-        //delete single tool api
+        //delete single tools api
         app.delete('/tool/:id', verifyJwt, async (req, res) => {
             const id = req.params.id;
             const query = { _id: ObjectId(id) }
