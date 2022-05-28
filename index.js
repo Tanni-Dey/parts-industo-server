@@ -60,8 +60,8 @@ async function run() {
 
         //create payment method
         app.post('/create-payment-intent', verifyJwt, async (req, res) => {
-            const { price } = req.body;
-            const amount = price * 100;
+            const { totalPrice } = req.body;
+            const amount = totalPrice * 100;
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: amount,
                 currency: 'usd',
@@ -94,6 +94,14 @@ async function run() {
         })
 
 
+        //load all orders api
+        app.get('/order', verifyJwt, async (req, res) => {
+            const query = {}
+            const allOrders = await ordersCollection.find(query).toArray()
+            res.send(allOrders)
+        })
+
+
         //update or insert all user api
         app.put('/user/:email', async (req, res) => {
             const userEmail = req.params.email;
@@ -119,21 +127,13 @@ async function run() {
         //make admin api
         app.put('/user/admin/:email', verifyJwt, verifyAdmin, async (req, res) => {
             const userEmail = req.params.email;
-            // const user = req.body;
             const filter = { email: userEmail }
-            // const decodedEmail = req.decoded.email
-            // const user = await usersCollection.findOne({ email: decodedEmail })
-            // if (user.role === 'admin') {
             const udateUser = {
                 $set: { role: 'admin' }
             }
             const result = await usersCollection.updateOne(filter, udateUser)
             res.send(result)
-            // }
-            // else {
-            //     return res.status(403).send({ message: 'Forbiden Access' })
 
-            // }
         })
 
 
@@ -151,7 +151,6 @@ async function run() {
             const profileEmail = req.query.email;
             const userProfile = req.body
             const filter = { email: profileEmail }
-            // const options = { upsert: true };
             const updateProfile = {
                 $set: userProfile
             }
@@ -209,7 +208,7 @@ async function run() {
 
 
         //single payment page data load api
-        app.get('/payment/:id', async (req, res) => {
+        app.get('/payment/:id', verifyJwt, async (req, res) => {
             const id = req.params.id;
             const query = { _id: ObjectId(id) }
             const singlePayment = await ordersCollection.findOne(query)
@@ -225,12 +224,45 @@ async function run() {
             const updatePayment = {
                 $set: {
                     paid: true,
+                    status: 'pending',
                     transId: payment.transactionid
                 }
             }
             const updateOrder = await ordersCollection.updateOne(query, updatePayment)
             const paymentInsert = await paymentsCollection.insertOne(payment)
             res.send(updatePayment)
+        })
+
+
+        //single pay to paid update api
+        app.patch('/order/:id', verifyJwt, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) }
+            const updateStatus = {
+                $set: {
+                    status: 'shipped'
+                }
+            }
+            const updateOrder = await ordersCollection.updateOne(query, updateStatus)
+            const paymentInsert = await paymentsCollection.updateOne(query, updateStatus)
+            res.send(updateStatus)
+        })
+
+        //delete single order api
+        app.delete('/order/:id', verifyJwt, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) }
+            const order = await ordersCollection.deleteOne(query)
+            res.send(order)
+        })
+
+
+        //delete single tool api
+        app.delete('/tool/:id', verifyJwt, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) }
+            const tool = await toolsCollection.deleteOne(query)
+            res.send(tool)
         })
 
 
