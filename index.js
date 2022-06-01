@@ -265,6 +265,12 @@ async function run() {
             res.send(tool)
         })
 
+        app.get('/payment', async (req, res) => {
+            const query = {}
+            const payments = await paymentsCollection.find(query).toArray()
+            res.send(payments)
+        })
+
 
     }
     finally {
